@@ -14,6 +14,8 @@ import Logout from "./Pages/Logout";
 import CreateSession from "./Pages/CreateSession";
 import AddGames from "./Pages/AddGames";
 import SessionDetails from "./Pages/SessionDetails";
+import Profile from "./Pages/Profile";
+
 
 import Layout from "./Components/Layout";
 
@@ -33,6 +35,7 @@ const router = createBrowserRouter([
           { path: "/createSession", Component: CreateSession },
           { path: "/sessions/:id/games", Component: AddGames },
           { path: "/sessions/:id", Component: SessionDetails },
+          { path: "/profile", Component: Profile },
           // later: edit session, my sessions, etc.
         ],
       },
