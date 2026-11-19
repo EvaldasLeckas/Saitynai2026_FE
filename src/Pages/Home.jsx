@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Link } from "react-router";
-
+import { useState } from "react";
+import { apiFetch, getTokenPayload } from "../Utils/Api";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -9,27 +10,19 @@ function formatDate(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// reads the user id ("sub") from the JWT
-function getUserId() {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-  try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64)).sub ?? null;
-  } catch {
-    return null;
-  }
-}
 
 function Home() {
   const queryClient = useQueryClient();
-  const userId = getUserId();
+  const userId = getTokenPayload()?.sub ?? null;
+  const [cityFilter, setCityFilter] = useState("");
+  const [sortBy, setSortBy] = useState("date-asc");
+  
 
   const sessionsQuery = useQuery({
     queryKey: ["sessions"],
     queryFn: async () => {
-      const response = await fetch(
-        "http://localhost:5083/api/Session?pageSize=5&pageNumber=1"
+      const response = await apiFetch(
+        "http://localhost:5083/api/Session?pageSize=10&pageNumber=1"
       );
       if (!response.ok) throw new Error("Failed to fetch sessions");
       return response.json();
@@ -39,7 +32,7 @@ function Home() {
   const participantsQuery = useQuery({
     queryKey: ["participants"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5083/api/session-participants");
+      const response = await apiFetch("http://localhost:5083/api/session-participants");
       if (!response.ok) throw new Error("Failed to fetch participants");
       return response.json();
     },
@@ -47,13 +40,10 @@ function Home() {
 
   const joinMutation = useMutation({
     mutationFn: async ({ sessionId, join }) => {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
+      const response = await apiFetch(
         `http://localhost:5083/api/session-participants/session/${sessionId}/${join ? "join" : "leave"}`,
         {
-          method: join ? "POST" : "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
+          method: join ? "POST" : "DELETE"}
       );
       if (!response.ok) {
         const text = await response.text();
@@ -70,46 +60,92 @@ function Home() {
     },
     onError: (error) => toast.error(error.message),
   });
-
   if (sessionsQuery.isPending || participantsQuery.isPending) return <p>Loading...</p>;
   if (sessionsQuery.error) return <p>An error has occurred: {sessionsQuery.error.message}</p>;
   if (participantsQuery.error) return <p>An error has occurred: {participantsQuery.error.message}</p>;
 
-  const sessions = sessionsQuery.data.resources.map((item) => item.resource);
   const participants = participantsQuery.data;
+  const allSessions = sessionsQuery.data.resources.map((item) => item.resource);
+  const now = new Date();
 
-  if (sessions.length === 0) return <p>No sessions available.</p>;
+  const upcoming = allSessions.filter((s) => new Date(s.endDate) > now);
+
+  const cities = [...new Set(upcoming.map((s) => s.city))];
+
+  const sessions = upcoming
+    .filter((s) => !cityFilter || s.city === cityFilter)
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "date-desc":
+          return new Date(b.startDate) - new Date(a.startDate);
+        case "players-asc":
+          return a.playerCount - b.playerCount;
+        case "players-desc":
+          return b.playerCount - a.playerCount;
+        default: // "date-asc"
+          return new Date(a.startDate) - new Date(b.startDate);
+      }
+    });
 
   return (
-    <div>
-      <h1>Sessions</h1>
-      <ul>
-        {sessions.map((session) => {
+    <div className="sessions-page">
+      <h1 className="sessions-title">Upcoming sessions</h1>
+
+      <div className="sessions-toolbar">
+        <select
+          className="filter-box"
+          value={cityFilter}
+          onChange={(e) => setCityFilter(e.target.value)}
+        >
+          <option value="">Filter by: all cities</option>
+          {cities.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          className="filter-box"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+<option value="date-asc">Sort by: date (soonest first)</option>
+<option value="date-desc">Sort by: date (latest first)</option>
+<option value="players-asc">Sort by: players (fewest first)</option>
+<option value="players-desc">Sort by: players (most first)</option>
+        </select>
+      </div>
+
+      {sessions.length === 0 && <p>No sessions available.</p>}
+
+      <ul className="session-list">
+        {sessions.map((session, index) => {
           const joined = participants.filter((p) => p.sessionId === session.id);
           const isJoined = joined.some((p) => p.userId === userId);
           const isOwner = session.createdByUserId === userId;
 
           return (
-            <li key={session.id}>
-              <Link to={`/sessions/${session.id}`}>
-              <strong>{session.city}, {session.address}</strong>
+            <li key={session.id} className="session-row" style={{ "--i": index}}>
+              <Link to={`/sessions/${session.id}`} className="session-card">
+                <strong>{session.city}, {session.address}</strong>
+                <span>{session.description}</span>
+                <span>{formatDate(session.startDate)} - {formatDate(session.endDate)}</span>
+                <span>Players: {joined.length} / {session.playerCount}</span>
               </Link>
-              <div>{session.description}</div>
-              <div>{formatDate(session.startDate)} - {formatDate(session.endDate)}</div>
-              <div>Players: {joined.length} / {session.playerCount}</div>
 
-
-              {userId && isOwner && <em>You created this session</em>}
-              {userId && !isOwner && (
-                <button
-                  disabled={joinMutation.isPending}
-                  onClick={() =>
-                    joinMutation.mutate({ sessionId: session.id, join: !isJoined })
-                  }
-                >
-                  {isJoined ? "Leave" : "Join"}
-                </button>
-              )}
+              <div className="session-actions">
+                {userId && isOwner && <em className="session-owner">Your session</em>}
+                {userId && !isOwner && (
+                  <button
+                    className="action-button"
+                    disabled={joinMutation.isPending}
+                    onClick={() =>
+                      joinMutation.mutate({ sessionId: session.id, join: !isJoined })
+                    }
+                  >
+                    {isJoined ? "Leave" : "Join"}
+                  </button>
+                )}
+              </div>
             </li>
           );
         })}
