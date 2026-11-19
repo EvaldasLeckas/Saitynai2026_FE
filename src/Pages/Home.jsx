@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Link } from "react-router";
 import { useState } from "react";
-import { apiFetch, getTokenPayload } from "../Utils/Api";
+import { apiFetch, getTokenPayload, API_URL } from "../Utils/Api";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -22,7 +22,7 @@ function Home() {
     queryKey: ["sessions"],
     queryFn: async () => {
       const response = await apiFetch(
-        "http://localhost:5083/api/Session?pageSize=10&pageNumber=1"
+        `${API_URL}/api/Session?pageSize=10&pageNumber=1`
       );
       if (!response.ok) throw new Error("Failed to fetch sessions");
       return response.json();
@@ -32,7 +32,7 @@ function Home() {
   const participantsQuery = useQuery({
     queryKey: ["participants"],
     queryFn: async () => {
-      const response = await apiFetch("http://localhost:5083/api/session-participants");
+      const response = await apiFetch(`${API_URL}/api/session-participants`);
       if (!response.ok) throw new Error("Failed to fetch participants");
       return response.json();
     },
@@ -41,7 +41,7 @@ function Home() {
   const joinMutation = useMutation({
     mutationFn: async ({ sessionId, join }) => {
       const response = await apiFetch(
-        `http://localhost:5083/api/session-participants/session/${sessionId}/${join ? "join" : "leave"}`,
+        `${API_URL}/api/session-participants/session/${sessionId}/${join ? "join" : "leave"}`,
         {
           method: join ? "POST" : "DELETE"}
       );

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "react-toastify";
 import EditSessionModal from "../Components/EditSessionModal";
 import ConfirmModal from "../Components/ConfirmModal";
-import { apiFetch, getTokenPayload } from "../Utils/Api";
+import { apiFetch, getTokenPayload, API_URL } from "../Utils/Api";
 
 
 function formatDate(iso) {
@@ -29,7 +29,7 @@ function SessionDetails() {
   const sessionQuery = useQuery({
     queryKey: ["session", id],
     queryFn: async () => {
-      const response = await apiFetch(`http://localhost:5083/api/Session/${id}`);
+      const response = await apiFetch(`${API_URL}/api/Session/${id}`);
       if (!response.ok) throw new Error("Failed to fetch session");
       return response.json();
     },
@@ -39,7 +39,7 @@ function SessionDetails() {
     queryKey: ["participants", id],
     queryFn: async () => {
       const response = await apiFetch(
-        `http://localhost:5083/api/session-participants/session/${id}`
+        `${API_URL}/api/session-participants/session/${id}`
       );
       if (!response.ok) throw new Error("Failed to fetch participants");
       return response.json();
@@ -50,7 +50,7 @@ function SessionDetails() {
     queryKey: ["games"],
     queryFn: async () => {
       const response = await apiFetch(
-        "http://localhost:5083/api/Game?pageSize=100&pageNumber=1"
+        `${API_URL}/api/Game?pageSize=100&pageNumber=1`
       );
       if (!response.ok) throw new Error("Failed to fetch games");
       return response.json();
@@ -61,7 +61,7 @@ function SessionDetails() {
     queryKey: ["results"],
     queryFn: async () => {
       const response = await apiFetch(
-        "http://localhost:5083/api/UserResult?pageSize=100&pageNumber=1"
+        `${API_URL}/api/UserResult?pageSize=100&pageNumber=1`
       );
       if (!response.ok) throw new Error("Failed to fetch results");
       return response.json();
@@ -74,14 +74,14 @@ function SessionDetails() {
 
       // delete their results first, so nothing is left orphaned if a call fails
       for (const resultId of resultIds) {
-        const res = await apiFetch(`http://localhost:5083/api/UserResult/${resultId}`, {
+        const res = await apiFetch(`${API_URL}/api/UserResult/${resultId}`, {
           method: "DELETE",
         });
         if (!res.ok) throw new Error("Failed to delete player's results");
       }
 
       const response = await apiFetch(
-        `http://localhost:5083/api/session-participants/session/${id}/user/${participantUserId}`,
+        `${API_URL}/api/session-participants/session/${id}/user/${participantUserId}`,
         { method: "DELETE" }
       );
       if (!response.ok) throw new Error("Failed to remove participant");
@@ -96,7 +96,7 @@ function SessionDetails() {
 
   const deleteResultMutation = useMutation({
   mutationFn: async (resultId) => {
-    const response = await apiFetch(`http://localhost:5083/api/UserResult/${resultId}`, {
+    const response = await apiFetch(`${API_URL}/api/UserResult/${resultId}`, {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete result");
@@ -111,7 +111,7 @@ function SessionDetails() {
   const joinMutation = useMutation({
     mutationFn: async (join) => {
       const response = await apiFetch(
-        `http://localhost:5083/api/session-participants/session/${id}/${join ? "join" : "leave"}`,
+        `${API_URL}/api/session-participants/session/${id}/${join ? "join" : "leave"}`,
         {
           method: join ? "POST" : "DELETE",
         }
@@ -134,7 +134,7 @@ function SessionDetails() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiFetch(`http://localhost:5083/api/Session/${id}`, {
+      const response = await apiFetch(`${API_URL}/api/Session/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete session");

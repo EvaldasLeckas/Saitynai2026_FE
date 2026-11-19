@@ -7,9 +7,9 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import ConfirmModal from "../Components/ConfirmModal";
-import { apiFetch, getTokenPayload, isAdmin } from "../Utils/Api";
+import { apiFetch, getTokenPayload, isAdmin, API_URL } from "../Utils/Api";
 
-const USERS_URL = "http://localhost:5083/api/Users";
+const USERS_URL = `${API_URL}/api/Users`;
 const PAGE_SIZE = 10;
 
 // the endpoint may return a plain array or a { resources } shape
