@@ -1,154 +1,157 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
-
-// reads the user id ("sub") from the JWT
-function getUserId() {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-  try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64)).sub ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// Separate component so the inputs start with the user's current values
-function EditForm({ user, userId }) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState(user.name);
-  const [surname, setSurname] = useState(user.surname);
-  const [bio, setBio] = useState(user.bio ?? "");
-  const [birthDate, setBirthDate] = useState(user.birthDate?.slice(0, 10) ?? "");
-
-  const updateMutation = useMutation({
-    mutationFn: async (data) => {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5083/api/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        let message = "Failed to update profile";
-        try {
-          const body = JSON.parse(text);
-          if (body.errors) message = Object.values(body.errors).flat().join(" ");
-        } catch {}
-        throw new Error(message);
-      }
-      // 204 = empty body, so no response.json() here
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
-      toast.success("Profile updated");
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updateMutation.mutate({
-      name,
-      surname,
-      bio,
-      email: user.email, // sent unchanged, see the note below
-      birthDate,
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div>
-        <input type="text" placeholder="Surname" value={surname} onChange={(e) => setSurname(e.target.value)} />
-      </div>
-      <div>
-        <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
-      </div>
-      <div>
-        <textarea placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
-      </div>
-      <div>
-        <input type="email" value={user.email} disabled />
-      </div>
-      <button type="submit" disabled={updateMutation.isPending}>
-        {updateMutation.isPending ? "Saving..." : "Save"}
-      </button>
-    </form>
-  );
-}
+import ConfirmModal from "../Components/ConfirmModal";
+import Avatar from "../Components/Avatar";
+import EditProfileModal from "../Components/EditProfileModal";
+import { apiFetch, API_URL, logout } from "../Utils/Api";
+import { readError } from "../Utils/Http";
 
 function Profile() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+
   const profileQuery = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5083/api/users/me/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch(`${API_URL}/api/users/me/profile`);
       if (!response.ok) throw new Error("Failed to fetch profile");
       return response.json();
     },
   });
 
-  const profile = profileQuery.data; // declared before it is used below
+  const profile = profileQuery.data;
 
   const userQuery = useQuery({
     queryKey: ["user", profile?.userId],
     enabled: !!profile, // wait until the profile has loaded
     queryFn: async () => {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5083/api/users/${profile.userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch(`${API_URL}/api/users/${profile.userId}`);
       if (!response.ok) throw new Error("Failed to fetch user");
       return response.json();
     },
   });
 
-  if (profileQuery.isPending || userQuery.isPending) return <p>Loading...</p>;
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiFetch(`${API_URL}/api/users/${profile.userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(await readError(response, "Failed to delete account"));
+    },
+    onSuccess: async () => {
+      try {
+        await logout(); // clears the token and the refresh cookie
+      } catch {
+        // the account is gone anyway, continue
+      }
+      queryClient.clear(); // so cached data of this user isn't shown to the next one
+      navigate("/login");
+      toast.success("Account deleted");
+    },
+    onError: (error) => {
+      setShowDelete(false);
+      toast.error(error.message);
+    },
+  });
+
+  // errors first: a failed profile query leaves userQuery disabled (pending forever)
   if (profileQuery.error) return <p>An error has occurred: {profileQuery.error.message}</p>;
   if (userQuery.error) return <p>An error has occurred: {userQuery.error.message}</p>;
+  if (profileQuery.isPending || userQuery.isPending) return <p>Loading...</p>;
 
-  return (
-    <div>
-      <h1>{profile.fullName}</h1>
-      <div>{profile.email}</div>
-      <div>Age: {profile.age}</div>
-      {profile.bio && <p>{profile.bio}</p>}
-
-      <h2>Stats</h2>
-      <ul>
-        <li>Games played: {profile.gamesPlayed}</li>
-        <li>Wins: {profile.wins}</li>
-        <li>Win rate: {profile.winRate}%</li>
-        <li>Average placement: {profile.averagePlacement ?? "-"}</li>
-      </ul>
-
-      <h2>Recent results</h2>
-      {profile.recentResults.length === 0 && <p>No results yet.</p>}
-      <ul>
-        {profile.recentResults.map((r, i) => (
-          <li key={i}>
-            {r.gameName}: place {r.placement}, score {r.score}
-          </li>
-        ))}
-      </ul>
-
-      <h2>Edit profile</h2>
-      <EditForm user={userQuery.data} userId={profile.userId} />
+return (
+  <div>
+    <div className="details-topbar profile-topbar">
+      <div className="details-actions">
+        <button className="action-button" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+        <button
+          className="action-button action-danger"
+          disabled={deleteAccountMutation.isPending}
+          onClick={() => setShowDelete(true)}
+        >
+          Delete account
+        </button>
+      </div>
     </div>
-  );
+
+    <div className="details-card profile-card">
+      <div className="profile-main">
+        <h1 className="sessions-title profile-name">
+          {profile.fullName}
+          <span className="profile-age">{profile.age}m.</span>
+        </h1>
+
+        <p className="profile-stats">
+          <span title="Games played">G: {profile.gamesPlayed}</span>
+          <span title="Win rate">WR: {profile.winRate}%</span>
+          <span title="Wins">W: {profile.wins}</span>
+          <span title="Average placement">
+            AVG PLACEMENT: {profile.averagePlacement ?? "-"}
+          </span>
+        </p>
+
+        {profile.bio && <p className="profile-bio">{profile.bio}</p>}
+
+        <section className="details-box">
+          <h2>Recent results</h2>
+          {profile.recentResults.length === 0 ? (
+            <p>No results yet.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="players-table">
+                <thead>
+                  <tr>
+                    <th>Game</th>
+                    <th>Place</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profile.recentResults.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.gameName}</td>
+                      <td>{r.placement}</td>
+                      <td>{r.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="profile-side">
+        <Avatar url={profile.avatarUrl} name={profile.fullName} />
+      </div>
+    </div>
+
+    {editing && (
+      <EditProfileModal
+        profile={profile}
+        user={userQuery.data}
+        onClose={() => setEditing(false)}
+      />
+    )}
+
+    {showDelete && (
+      <ConfirmModal
+        title="Delete account"
+        message="Delete your account permanently? Your profile and data will be removed and this cannot be undone."
+        confirmLabel="Delete account"
+        busy={deleteAccountMutation.isPending}
+        onCancel={() => setShowDelete(false)}
+        onConfirm={() => deleteAccountMutation.mutate()}
+      />
+    )}
+  </div>
+);
 }
 
 export default Profile;
