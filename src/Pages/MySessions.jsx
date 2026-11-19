@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { API_URL } from "../Utils/Api";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -37,7 +38,7 @@ function MySessions() {
     enabled: isLobbyOwner,
     queryFn: async () => {
       const response = await fetch(
-        "http://localhost:5083/api/Session?pageSize=100&pageNumber=1"
+        `${API_URL}/api/Session?pageSize=100&pageNumber=1`
       );
       if (!response.ok) throw new Error("Failed to fetch sessions");
       return response.json();

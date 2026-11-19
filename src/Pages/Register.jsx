@@ -7,6 +7,7 @@ import { validatePassword } from "../Utils/PasswordValidation";
 import PasswordRequirements from "../Components/PasswordRequirements";
 import { Link } from "react-router"
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { apiFetch, API_URL } from "../Utils/Api";
 
 // Registracijos funkcija
 
@@ -44,7 +45,7 @@ function Register() {
   // Back-End API kvietimas (kas tas mutation?)
   const registerMutation = useMutation({
     mutationFn: async (credentials) => {
-      const response = await fetch("http://localhost:5083/api/register", {
+      const response = await fetch(`${API_URL}/api/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
@@ -280,7 +281,7 @@ function Register() {
             id="confirmPassword"
             ref={confirmPasswordInputRef}
             className="auth-inputbox"
-            type={showPassword ? "text" : "password"}
+            type={showConfirmPassword ? "text" : "password"}
             placeholder="Repeat your password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

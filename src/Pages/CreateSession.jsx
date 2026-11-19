@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { triggerAnimation } from "../Utils/Auth";
-import { apiFetch, refreshSession } from "../Utils/Api";
+import { apiFetch, refreshSession, API_URL} from "../Utils/Api";
 
 
 function CreateSession() {
@@ -25,7 +25,7 @@ function CreateSession() {
   const createMutation = useMutation({
     mutationFn: async (session) => {
       const token = localStorage.getItem("token");
-      const response = await apiFetch("http://localhost:5083/api/Session", {
+      const response = await apiFetch(`${API_URL}/api/Session`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

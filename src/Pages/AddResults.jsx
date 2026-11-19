@@ -2,7 +2,7 @@ import { useState, Fragment } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "react-toastify";
-import { apiFetch, getTokenPayload, isAdmin } from "../Utils/Api";
+import { apiFetch, getTokenPayload, isAdmin, API_URL } from "../Utils/Api";
 
 
 function AddResults() {
@@ -18,7 +18,7 @@ function AddResults() {
   const sessionQuery = useQuery({
   queryKey: ["session", id],
   queryFn: async () => {
-    const response = await apiFetch(`http://localhost:5083/api/Session/${id}`);
+    const response = await apiFetch(`${API_URL}/api/Session/${id}`);
     if (!response.ok) throw new Error("Failed to fetch session");
     return response.json();
   },
@@ -26,7 +26,7 @@ function AddResults() {
   const gamesQuery = useQuery({
     queryKey: ["games"],
     queryFn: async () => {
-      const response = await apiFetch("http://localhost:5083/api/Game?pageSize=100&pageNumber=1");
+      const response = await apiFetch(`${API_URL}/api/Game?pageSize=100&pageNumber=1`);
       if (!response.ok) throw new Error("Failed to fetch games");
       return response.json();
     },
@@ -35,7 +35,7 @@ function AddResults() {
   const participantsQuery = useQuery({
     queryKey: ["participants", id],
     queryFn: async () => {
-      const response = await apiFetch(`http://localhost:5083/api/session-participants/session/${id}`);
+      const response = await apiFetch(`${API_URL}/api/session-participants/session/${id}`);
       if (!response.ok) throw new Error("Failed to fetch participants");
       return response.json();
     },
@@ -44,7 +44,7 @@ function AddResults() {
   const resultsQuery = useQuery({
     queryKey: ["results"],
     queryFn: async () => {
-      const response = await apiFetch("http://localhost:5083/api/UserResult?pageSize=100&pageNumber=1");
+      const response = await apiFetch(`${API_URL}/api/UserResult?pageSize=100&pageNumber=1`);
       if (!response.ok) throw new Error("Failed to fetch results");
       return response.json();
     },
@@ -56,8 +56,8 @@ function AddResults() {
         rows.map(async ({ existing, body }) => {
           const response = await apiFetch(
             existing
-              ? `http://localhost:5083/api/UserResult/${existing.id}`
-              : "http://localhost:5083/api/UserResult",
+              ? `${API_URL}/api/UserResult/${existing.id}`
+              : `${API_URL}/api/UserResult`,
             {
               method: existing ? "PUT" : "POST",
               headers: {

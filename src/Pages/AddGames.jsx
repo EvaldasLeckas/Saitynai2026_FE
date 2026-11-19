@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { triggerAnimation } from "../Utils/Auth";
 import ConfirmModal from "../Components/ConfirmModal";
-import { apiFetch, getTokenPayload } from "../Utils/Api";
+import { apiFetch, getTokenPayload, API_URL } from "../Utils/Api";
 
 
 const lengthLabels = ["Short", "Normal", "Long"];
@@ -45,7 +45,7 @@ function AddGames() {
   const sessionQuery = useQuery({
   queryKey: ["session", id],
   queryFn: async () => {
-    const response = await apiFetch(`http://localhost:5083/api/Session/${id}`);
+    const response = await apiFetch(`${API_URL}/api/Session/${id}`);
     if (!response.ok) throw new Error("Failed to fetch session");
     return response.json();
   },
@@ -55,7 +55,7 @@ function AddGames() {
     queryKey: ["games"],
     queryFn: async () => {
       const response = await apiFetch(
-        "http://localhost:5083/api/Game?pageSize=100&pageNumber=1"
+        `${API_URL}/api/Game?pageSize=100&pageNumber=1`
       );
       if (!response.ok) throw new Error("Failed to fetch games");
       return response.json();
@@ -83,7 +83,7 @@ function AddGames() {
 
   const addGameMutation = useMutation({
     mutationFn: async (game) => {
-      const response = await apiFetch("http://localhost:5083/api/Game", {
+      const response = await apiFetch(`${API_URL}/api/Game`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -107,7 +107,7 @@ function AddGames() {
 
   const updateGameMutation = useMutation({
     mutationFn: async (game) => {
-      const response = await apiFetch(`http://localhost:5083/api/Game/${game.id}`, {
+      const response = await apiFetch(`${API_URL}/api/Game/${game.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +129,7 @@ function AddGames() {
 
   const deleteGameMutation = useMutation({
     mutationFn: async (gameId) => {
-      const response = await apiFetch(`http://localhost:5083/api/Game/${gameId}`, {
+      const response = await apiFetch(`${API_URL}/api/Game/${gameId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error(await readError(response, "Failed to delete game"));

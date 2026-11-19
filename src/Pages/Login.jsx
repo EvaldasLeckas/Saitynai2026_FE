@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { Link } from "react-router"
 import { triggerAnimation } from "../Utils/Auth";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import { setAccessToken } from "../Utils/Api";
+import { setAccessToken, API_URL } from "../Utils/Api";
 
 function Login() {
 
@@ -23,7 +23,7 @@ function Login() {
   // Login logika
   const loginMutation = useMutation({
     mutationFn: async (credentials) => {
-      const response = await fetch("http://localhost:5083/api/login", {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
