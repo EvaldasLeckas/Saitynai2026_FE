@@ -44,6 +44,7 @@ function CreateSession() {
         }
       toast.success("Session created");
       navigate(`/sessions/${created.id}/games`);
+      
     },
     onError: (err) => {
       setError(err.message);

@@ -61,7 +61,17 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
-          <ToastContainer />
+          <ToastContainer
+            position="top-center"     
+            autoClose={3000}           
+            hideProgressBar={true}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            theme="dark"              
+            transition={Slide}         
+            limit={3}                  
+          />
 
       </QueryClientProvider>
   </StrictMode>
